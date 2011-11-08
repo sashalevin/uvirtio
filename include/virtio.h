@@ -4,6 +4,8 @@
 #include <linux/virtio_ring.h>
 #include <stdbool.h>
 
+#define mb() asm volatile ("" : : : "memory")
+
 /**
  * virtqueue - a queue to register buffers for sending or receiving.
  * @list: the chain of virtqueues for this device

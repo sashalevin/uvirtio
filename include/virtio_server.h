@@ -8,6 +8,9 @@
 #include <linux/types.h>
 #include <sys/uio.h>
 #include <stdbool.h>
+#include <linux/kernel.h>
+
+#define to_vvq(_vq) container_of(_vq, struct vring_virtqueue, vq)
 
 /**
  * operations for virtqueue
@@ -56,11 +59,22 @@
  * All operations can be called in any context.
  */
 
-int virtqueue_add_buf(struct virtqueue *vq,
-			  struct iovec iov[],
-			  unsigned int out_num,
-			  unsigned int in_num,
+struct virtqueue *vring_new_virtqueue(unsigned int num,
+				      unsigned int vring_align,
+				      struct virtio_device *vdev,
+				      void *vq_addr,
+				      void *pages,
+				      void (*notify)(struct virtqueue *),
+				      void (*callback)(struct virtqueue *),
+				      const char *name);
+
+int virtqueue_add_buf(struct virtqueue *_vq,
+			  struct iovec sg[],
+			  unsigned int out,
+			  unsigned int in,
 			  void *data);
+
+void virtqueue_kick(struct virtqueue *_vq);
 
 void virtqueue_kick(struct virtqueue *vq);
 

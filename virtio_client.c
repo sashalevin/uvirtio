@@ -1,7 +1,5 @@
 #include "virtio_client.h"
 
-#define wmb() asm volatile ("" : : : "memory")
-
 struct vring_used_elem *virt_queue__set_used_elem(struct vring_virtqueue *vq, u32 head, u32 len)
 {
 	struct vring_used_elem *used_elem;
@@ -15,7 +13,7 @@ struct vring_used_elem *virt_queue__set_used_elem(struct vring_virtqueue *vq, u3
 	 * We need a wmb here since we can't advance idx unless we're ready
 	 * to pass the used element to the guest.
 	 */
-	wmb();
+	mb();
 	vq->vring.used->idx++;
 
 	/*
@@ -23,7 +21,7 @@ struct vring_used_elem *virt_queue__set_used_elem(struct vring_virtqueue *vq, u3
 	 * Without a wmb here the guest may ignore the queue since it won't see
 	 * an updated idx.
 	 */
-	wmb();
+	mb();
 
 	return used_elem;
 }
