@@ -5,23 +5,39 @@
 #include <virtio_server.h>
 #include <linux/list.h>
 
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+       
 int main(int argc, char **argv)
 {
-	void *buffer = malloc(131072);
-	void *buffer2 = malloc(131072);
+	int fd = shm_open("virtio_shm", O_CREAT | O_RDWR, 0777);
+	void *shm, *vq_ptr, *data_ptr;
+	struct iovec iov[2];
 	struct virtio_device vdev = {0};
 	struct virtqueue *vq;
-	char *data = "my virtio msg";
-	struct iovec iov[2], iov2[2] = {0};
-	u16 in, out;
+	u16 out, in, i;
 
-	iov[0].iov_base = data;
-	iov[0].iov_len = 5;
-	iov[1].iov_base = data + 5;
-	iov[1].iov_len = 9;
+	ftruncate(fd, 131072);
+	shm = mmap(NULL, 131072, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	vq_ptr = shm;
+	data_ptr = shm + 32768;
+
+	iov[0] = (struct iovec) {
+		.iov_base = data_ptr,
+		.iov_len = 4,
+	};
+	iov[1] = (struct iovec) {
+		.iov_base = data_ptr + 4,
+		.iov_len = 6,
+	};
+
+	strncpy(data_ptr, "a1b2c3d4e5", 10);
+	printf("Input: %s\n", (char *)data_ptr);
 
 	INIT_LIST_HEAD(&vdev.vqs);
-	vq = vring_new_virtqueue(16, 4096, &vdev, buffer, buffer2, NULL, NULL, "test");
+	vq = vring_new_virtqueue(16, 4096, &vdev, vq_ptr, vq_ptr + 1024, NULL, NULL, "test");
 	if (virt_queue__available(to_vvq(vq)))
 		printf("No buffers available - OK!\n");
 
@@ -30,7 +46,14 @@ int main(int argc, char **argv)
 	if (virt_queue__available(to_vvq(vq)))
 		printf("Buffers available - OK!\n");
 
-	virt_queue__get_iov(to_vvq(vq), iov2, &in, &out);
+	virt_queue__get_iov(to_vvq(vq), iov, &out, &in);
+
+	printf("Output: ");
+	for (i = 0; i < out; i++) {
+		printf("%.*s", (int)iov[i].iov_len, (char*)iov[i].iov_base);
+		fflush(stdout);
+	}
+	printf("\n");
 
 	return 0;
 }
